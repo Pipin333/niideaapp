@@ -75,7 +75,10 @@ export function generateRoomCode(randomFn: () => number = Math.random): string {
 export function buildWordHint(word: string): string {
   return word
     .split('')
-    .map((char, index) => (index === 0 ? char : '_'))
+    .map((char, index) => {
+      if (char === ' ') return '  ';
+      return index === 0 ? char : '_';
+    })
     .join(' ');
 }
 
@@ -114,6 +117,7 @@ export class RoomMatchEngine {
   // Estado especifico de Pinturillo
   private currentDrawerId: string | null = null;
   private currentSecretWord: string | null = null;
+  private sketchRerollsRemaining = 1;
   private sketchStrokes: VectorBatch[] = [];
   private sketchGuessedIds: string[] = [];
   private sketchFeed: GuessFeedEntry[] = [];
@@ -130,6 +134,9 @@ export class RoomMatchEngine {
   constructor(roomCode: string, randomFn: () => number = Math.random) {
     this.roomCode = sanitizeRoomCode(roomCode);
     this.randomFn = randomFn;
+    this.triviaCursor = Math.floor(this.randomFn() * TRIVIA_BANK.length);
+    this.socialCursor = Math.floor(this.randomFn() * SOCIAL_PROMPTS.length);
+    this.sketchCursor = Math.floor(this.randomFn() * SKETCH_WORDS.length);
   }
 
   /**
@@ -187,6 +194,11 @@ export class RoomMatchEngine {
       case 'clear_canvas': {
         const actor = this.requireContenderByToken(command.sessionToken);
         this.clearSketchCanvas(actor);
+        return actor;
+      }
+      case 'reroll_sketch_word': {
+        const actor = this.requireContenderByToken(command.sessionToken);
+        this.rerollSketchWord(actor, now);
         return actor;
       }
       case 'submit_sketch_guess': {
@@ -307,6 +319,7 @@ export class RoomMatchEngine {
         isSelfDrawer,
         secretWord: isSelfDrawer || isRevealOrPodium ? this.currentSecretWord : null,
         wordHint: buildWordHint(this.currentSecretWord),
+        rerollsRemaining: this.sketchRerollsRemaining,
         strokes: this.sketchStrokes,
         guessedContenderIds: [...this.sketchGuessedIds],
         feed: this.sketchFeed.slice(-8),
@@ -470,7 +483,7 @@ export class RoomMatchEngine {
 
     if (chosenMode === 'trivia') {
       const prompt = TRIVIA_BANK[this.triviaCursor % TRIVIA_BANK.length]!;
-      this.triviaCursor++;
+      this.triviaCursor += 7;
       this.currentTrivia = prompt;
       this.triviaSelections.clear();
       this.roundDeadlineAt = now + TRIVIA_DURATION_MS;
@@ -481,7 +494,7 @@ export class RoomMatchEngine {
       this.simulateBotTriviaResponses(now);
     } else if (chosenMode === 'thats_you') {
       const prompt = SOCIAL_PROMPTS[this.socialCursor % SOCIAL_PROMPTS.length]!;
-      this.socialCursor++;
+      this.socialCursor += 7;
       this.currentSocialPrompt = prompt;
       this.socialVotes.clear();
       this.socialVoteBreakdown = null;
@@ -497,9 +510,10 @@ export class RoomMatchEngine {
       const drawerPool = humanPool.length > 0 ? humanPool : this.contenders;
       const drawer = drawerPool[(this.roundNumber - 1) % drawerPool.length]!;
       const secretWord = SKETCH_WORDS[this.sketchCursor % SKETCH_WORDS.length]!;
-      this.sketchCursor++;
+      this.sketchCursor += 7;
       this.currentDrawerId = drawer.id;
       this.currentSecretWord = secretWord;
+      this.sketchRerollsRemaining = 1;
       this.sketchStrokes = [];
       this.sketchGuessedIds = [];
       this.sketchFeed = [];
@@ -589,6 +603,28 @@ export class RoomMatchEngine {
       throw new Error('Solo el dibujante activo puede limpiar el lienzo.');
     }
     this.sketchStrokes = [];
+  }
+
+  private rerollSketchWord(actor: Contender, now: number): void {
+    if (this.phase !== 'playing' || this.selectedMode !== 'pinturillo') {
+      throw new Error('No hay una ronda activa de Pinturillo.');
+    }
+    if (actor.id !== this.currentDrawerId) {
+      throw new Error('Solo el dibujante activo puede cambiar la palabra.');
+    }
+    if (this.sketchRerollsRemaining <= 0) {
+      throw new Error('Ya utilizaste tu unico cambio de palabra en esta ronda.');
+    }
+
+    this.sketchRerollsRemaining -= 1;
+    const nextWord = SKETCH_WORDS[this.sketchCursor % SKETCH_WORDS.length]!;
+    this.sketchCursor += 7;
+    this.currentSecretWord = nextWord;
+    this.sketchStrokes = [];
+    this.hasDrawerSubmittedStroke = false;
+    this.roundDeadlineAt = now + SKETCH_DURATION_MS;
+    this.watchdogDeadlineAt = now + WATCHDOG_TIMEOUT_MS;
+    this.statusBanner = `${actor.nickname} uso su re-roll (1/1) y cambio la palabra secreta.`;
   }
 
   private submitSketchGuess(actor: Contender, rawGuess: string, now: number): void {

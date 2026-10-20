@@ -114,6 +114,7 @@ export interface AsymmetricProjection {
     isSelfDrawer: boolean;
     secretWord: string | null;
     wordHint: string;
+    rerollsRemaining: number;
     strokes: VectorBatch[];
     guessedContenderIds: string[];
     feed: GuessFeedEntry[];
@@ -161,6 +162,10 @@ export type ClientCommand =
     }
   | {
       type: 'clear_canvas';
+      sessionToken: string;
+    }
+  | {
+      type: 'reroll_sketch_word';
       sessionToken: string;
     }
   | {

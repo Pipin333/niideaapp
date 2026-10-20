@@ -12,7 +12,8 @@ Consola de party game multijugador en tiempo real construida con **Astro**, **Ty
 - **Ciclo de Partida con Ruleta de Modos**:
   1. **Trivia Rush**: Preguntas de 4 alternativas con reloj de 15 segundos, bonus de velocidad y multiplicador de rachas.
   2. **Ese Eres Tu (That's You)**: Votacion secreta donde las opciones son los nombres de los amigos en la sala.
-  3. **Pinturillo**: Lienzo vectorial tactil con muestreo a 30 Hz (lotes cada 33 ms con coordenadas normalizadas de 0 a 1000) y adivinanzas en vivo.
+  3. **Pinturillo**: Lienzo vectorial tactil con muestreo a 30 Hz (lotes cada 33 ms con coordenadas normalizadas de 0 a 1000), opcion de **1 Re-roll de palabra por ronda** para quien dibuja y adivinanzas en vivo.
+- **Banco Ampliado**: 24 preguntas de Trivia Rush, 24 premisas de Ese Eres Tu y 40 palabras de Pinturillo con recorrido coprimo aleatorio por sala.
 - **Salvaguardas de Arquitectura (MAGI Shield)**:
   - **Watchdog Anti-AFK (15s)**: Si el jugador de turno no gira la ruleta o no inicia su trazo en 15 segundos, el servidor ejecuta `auto-spin` / `auto-skip` automatico mediante alarmas del servidor.
   - **Reconexion Transparente por `sessionToken`**: Recargar la pestaña reasocia al jugador a su asiento y preserva su puntaje sin duplicar participantes.

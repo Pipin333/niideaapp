@@ -95,6 +95,17 @@ export function bootNiIdeaConsole(): void {
     if (savedNick && nicknameInput) {
       nicknameInput.value = savedNick;
     }
+    const urlRoom = new URLSearchParams(window.location.search).get('room');
+    if (urlRoom) {
+      const cleaned = urlRoom.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4);
+      for (let i = 0; i < 4; i++) {
+        const slot = pinInputs[i];
+        if (slot) slot.value = cleaned[i] ?? '';
+      }
+      if (pinSlotContainer) {
+        pinSlotContainer.dataset.complete = cleaned.length === 4 ? 'true' : 'false';
+      }
+    }
   } catch {
     // Continuar sin persistencia si el navegador restringe sessionStorage
   }
@@ -346,6 +357,7 @@ export function bootNiIdeaConsole(): void {
   // Pinturillo Canvas & 30Hz Vector Batching
   const sketchCanvas = document.getElementById('pinturillo-canvas') as HTMLCanvasElement | null;
   const clearCanvasBtn = document.getElementById('btn-clear-canvas');
+  const rerollWordBtn = document.getElementById('btn-reroll-word') as HTMLButtonElement | null;
   const sketchGuessForm = document.getElementById('sketch-guess-form') as HTMLFormElement | null;
   const sketchGuessInput = document.getElementById('sketch-guess-input') as HTMLInputElement | null;
 
@@ -428,6 +440,10 @@ export function bootNiIdeaConsole(): void {
 
   clearCanvasBtn?.addEventListener('click', () => {
     sendCommand({ type: 'clear_canvas', sessionToken });
+  });
+
+  rerollWordBtn?.addEventListener('click', () => {
+    sendCommand({ type: 'reroll_sketch_word', sessionToken });
   });
 
   sketchGuessForm?.addEventListener('submit', (ev) => {
@@ -693,6 +709,12 @@ export function bootNiIdeaConsole(): void {
       }
       drawerTools?.classList.toggle('hidden', !state.sketchView.isSelfDrawer);
       guesserBox?.classList.toggle('hidden', state.sketchView.isSelfDrawer);
+
+      if (rerollWordBtn) {
+        const remaining = state.sketchView.rerollsRemaining ?? 0;
+        rerollWordBtn.disabled = remaining <= 0;
+        rerollWordBtn.textContent = remaining > 0 ? `Re-roll (${remaining})` : 'Re-roll (0)';
+      }
 
       if (sketchCanvas && !isDrawing) {
         drawStreaksOnCanvas(sketchCanvas, state.sketchView.strokes);

@@ -117,6 +117,24 @@ describe('RoomMatchEngine & MAGI Safeguards', () => {
 
     expect(drawerProj.sketchView?.secretWord).toBeTruthy();
     expect(guesserProj.sketchView?.secretWord).toBeNull();
+    expect(drawerProj.sketchView?.rerollsRemaining).toBe(1);
+
+    // Non-drawer cannot reroll the word
+    expect(() =>
+      engine.handleCommand({ type: 'reroll_sketch_word', sessionToken: guesserToken }, 3150)
+    ).toThrow(/Solo el dibujante activo/);
+
+    // Drawer uses their single allowed re-roll (1/1)
+    const initialWord = drawerProj.sketchView!.secretWord!;
+    engine.handleCommand({ type: 'reroll_sketch_word', sessionToken: drawerToken }, 3160);
+    const afterRerollProj = engine.buildProjectionForSession(drawerToken);
+    expect(afterRerollProj.sketchView?.rerollsRemaining).toBe(0);
+    expect(afterRerollProj.sketchView?.secretWord).not.toBe(initialWord);
+
+    // Second re-roll in the same round is rejected
+    expect(() =>
+      engine.handleCommand({ type: 'reroll_sketch_word', sessionToken: drawerToken }, 3170)
+    ).toThrow(/unico cambio de palabra/);
 
     // Drawer pushes a normalized vector batch (clamping coordinates 0..1000)
     engine.handleCommand(
@@ -143,7 +161,7 @@ describe('RoomMatchEngine & MAGI Safeguards', () => {
     ]);
 
     // Guesser submits correct word with accents/lowercase -> matched and concludes round
-    const word = drawerProj.sketchView!.secretWord!;
+    const word = afterRerollProj.sketchView!.secretWord!;
     expect(normalizeAnswerText('  cómpleto ')).toBe('COMPLETO');
     engine.handleCommand(
       {

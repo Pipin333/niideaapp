@@ -584,9 +584,16 @@ const partykitHost = import.meta.env.PUBLIC_PARTYKIT_HOST ?? '';
                 class="w-6 h-6 rounded-full bg-[#F8FAFC] border border-white/40 focus-visible:ring-2 focus-visible:ring-white"
               ></button>
               <button
+                id="btn-reroll-word"
+                type="button"
+                class="px-2.5 py-1 rounded bg-[#0B241E] border border-[#10B981]/60 font-mono text-xs text-[#10B981] hover:bg-[#10B981] hover:text-[#022C22] disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
+              >
+                Re-roll (1)
+              </button>
+              <button
                 id="btn-clear-canvas"
                 type="button"
-                class="px-2.5 py-1 rounded bg-[#0B241E] border border-[#064E3B] font-mono text-xs text-[#94A3B8] hover:text-white"
+                class="px-2.5 py-1 rounded bg-[#0B241E] border border-[#064E3B] font-mono text-xs text-[#94A3B8] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
               >
                 Borrar
               </button>
