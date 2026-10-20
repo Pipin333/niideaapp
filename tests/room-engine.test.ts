@@ -182,6 +182,33 @@ describe('RoomMatchEngine & MAGI Safeguards', () => {
     expect(afterAutoSpin.phase).toBe('playing');
   });
 
+  it('guarantees all 3 modes (Trivia, Ese Eres Tu, Pinturillo) appear in a 3-round match without repetition', () => {
+    const seq = [0.95, 0.42, 0.95, 0.12, 0.88, 0.77];
+    let cursor = 0;
+    const engine = new RoomMatchEngine('BAG3', () => {
+      const val = seq[cursor % seq.length]!;
+      cursor++;
+      return val;
+    });
+
+    engine.handleCommand({ type: 'join_room', nickname: 'Host', sessionToken: 'tok-1' }, 100);
+    engine.handleCommand({ type: 'join_room', nickname: 'Guest', sessionToken: 'tok-2' }, 110);
+    engine.handleCommand({ type: 'start_match', sessionToken: 'tok-1', totalRounds: 3 }, 200);
+
+    const seenModes = new Set<string>();
+    for (let round = 1; round <= 3; round++) {
+      engine.handleCommand({ type: 'spin_roulette', sessionToken: 'tok-1' }, round * 1000);
+      const proj = engine.buildProjectionForSession('tok-1');
+      seenModes.add(proj.selectedMode!);
+
+      // Force round conclusion via deadline alarm
+      engine.evaluateAlarms(round * 1000 + 60_000);
+      engine.handleCommand({ type: 'next_round', sessionToken: 'tok-1' }, round * 1000 + 61_000);
+    }
+
+    expect(seenModes).toEqual(new Set(['trivia', 'thats_you', 'pinturillo']));
+  });
+
   it('contains zero em-dashes or en-dashes across the entire repository', () => {
     const rootDir = join(__dirname, '..');
     const allowedDirs = ['src', 'party', 'docs', 'scripts'];

@@ -93,6 +93,7 @@ export class RoomMatchEngine {
   private rollerRotationIndex = 0;
   private activeRollerId: string | null = null;
   private selectedMode: GameMode | null = null;
+  private modeBag: GameMode[] = [];
   private roundStartedAt: number | null = null;
   private roundDeadlineAt: number | null = null;
   private watchdogDeadlineAt: number | null = null;
@@ -415,6 +416,7 @@ export class RoomMatchEngine {
     this.totalRounds = Math.max(1, Math.min(9, requestedRounds));
     this.roundNumber = 1;
     this.rollerRotationIndex = 0;
+    this.modeBag = [];
     for (const c of this.contenders) {
       c.score = 0;
       c.streak = 0;
@@ -456,11 +458,13 @@ export class RoomMatchEngine {
       }
     }
 
-    const modes: GameMode[] = ['trivia', 'thats_you', 'pinturillo'];
-    const modeIndex = (this.roundNumber - 1 + Math.floor(this.randomFn() * modes.length)) % modes.length;
-    const chosenMode = modes[modeIndex]!;
+    if (this.modeBag.length === 0) {
+      this.modeBag = ['trivia', 'thats_you', 'pinturillo'];
+    }
+    const bagIndex = Math.floor(this.randomFn() * this.modeBag.length) % this.modeBag.length;
+    const [chosenMode] = this.modeBag.splice(bagIndex, 1);
 
-    this.selectedMode = chosenMode;
+    this.selectedMode = chosenMode!;
     this.phase = 'playing';
     this.roundStartedAt = now;
 
@@ -572,7 +576,10 @@ export class RoomMatchEngine {
     if (!this.hasDrawerSubmittedStroke) {
       this.hasDrawerSubmittedStroke = true;
       this.watchdogDeadlineAt = null;
-      this.simulateBotSketchGuesses(now);
+    }
+
+    if (this.sketchStrokes.length === 3 || this.sketchStrokes.length >= 10) {
+      this.simulateBotSketchGuesses(now, this.sketchStrokes.length >= 10);
     }
   }
 
@@ -746,11 +753,16 @@ export class RoomMatchEngine {
     }
   }
 
-  private simulateBotSketchGuesses(now: number): void {
+  private simulateBotSketchGuesses(now: number, allowCorrectGuess: boolean): void {
     if (!this.currentSecretWord) return;
+    const decoys = ['¿Una empanada?', '¿Un gato?', '¿Una nave espacial?', '¿Un sombrero?'];
     for (const bot of this.contenders.filter((c) => c.isBot && c.id !== this.currentDrawerId)) {
-      if (this.randomFn() > 0.4 && !this.sketchGuessedIds.includes(bot.id)) {
-        this.submitSketchGuess(bot, this.currentSecretWord, now + 3000);
+      if (this.sketchGuessedIds.includes(bot.id)) continue;
+      if (!allowCorrectGuess) {
+        const decoy = decoys[Math.floor(this.randomFn() * decoys.length)] ?? '¿Un circulo?';
+        this.submitSketchGuess(bot, decoy, now + 500);
+      } else if (this.randomFn() > 0.35) {
+        this.submitSketchGuess(bot, this.currentSecretWord, now + 1000);
       }
     }
   }
