@@ -61,8 +61,9 @@ npm run build
 # Ejecutar servidor de produccion unificado
 npm start
 
-# Desplegar actor WebSocket en Cloudflare PartyKit
-npm run party:deploy
+# Desplegar en Cloudflare Workers + Durable Objects (Frontend + PartyServer en 1 comando)
+npx wrangler login
+npm run deploy
 ```
 
 ---
