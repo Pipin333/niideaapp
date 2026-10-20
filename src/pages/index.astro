@@ -1,0 +1,687 @@
+---
+const partykitHost = import.meta.env.PUBLIC_PARTYKIT_HOST ?? '';
+---
+
+<!DOCTYPE html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ni Idea | Party Game & Trivia en Tiempo Real</title>
+    <meta
+      name="description"
+      content="Trivia rápida, dibujos dudosos y votaciones para delatar a tus amigos. Consola de juego en tiempo real sin cuentas ni descargas."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style is:global>
+      :root {
+        --mouse-x: 50vw;
+        --mouse-y: 50vh;
+      }
+
+      body {
+        background-color: #030712;
+        color: #f8fafc;
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+
+      .millimeter-grid-base {
+        background-image:
+          linear-gradient(to right, rgba(16, 185, 129, 0.05) 0.5px, transparent 0.5px),
+          linear-gradient(to bottom, rgba(16, 185, 129, 0.05) 0.5px, transparent 0.5px);
+        background-size: 28px 28px;
+      }
+
+      .millimeter-grid-spotlight {
+        background-image:
+          linear-gradient(to right, rgba(16, 185, 129, 0.22) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(16, 185, 129, 0.22) 1px, transparent 1px);
+        background-size: 28px 28px;
+        -webkit-mask-image: radial-gradient(
+          380px circle at var(--mouse-x) var(--mouse-y),
+          black 20%,
+          rgba(0, 0, 0, 0.3) 65%,
+          transparent 100%
+        );
+        mask-image: radial-gradient(
+          380px circle at var(--mouse-x) var(--mouse-y),
+          black 20%,
+          rgba(0, 0, 0, 0.3) 65%,
+          transparent 100%
+        );
+      }
+
+      .console-title {
+        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-size: clamp(2.25rem, 1.8rem + 2vw, 3.5rem);
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
+
+      .console-subtitle {
+        font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+        letter-spacing: -0.01em;
+      }
+
+      .pin-slot-input {
+        font-family: 'Fira Code', monospace;
+        font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.5rem);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        transition:
+          border-color 140ms cubic-bezier(0.16, 1, 0.3, 1),
+          box-shadow 140ms cubic-bezier(0.16, 1, 0.3, 1),
+          transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .pin-slot-input:focus-visible {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+      }
+
+      #pin-slot-group[data-complete='true'] .pin-slot-input {
+        border-color: #10b981;
+        box-shadow: 0 0 18px rgba(16, 185, 129, 0.28);
+      }
+
+      @keyframes console-fade-in {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-console-entry {
+        animation: console-fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+
+        .pin-slot-input:focus-visible {
+          border: 2px solid #10b981 !important;
+          box-shadow: none !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body
+    data-partykit-host={partykitHost}
+    class="h-dvh w-screen overflow-hidden select-none flex flex-col justify-between relative bg-[#030712] text-[#F8FAFC]"
+  >
+    <!-- Capa Z-0: Grid Milimetrico Base, Spotlight Interactivo y Marcas de Agua 1px -->
+    <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
+      <div class="absolute inset-0 millimeter-grid-base"></div>
+      <div class="absolute inset-0 millimeter-grid-spotlight"></div>
+
+      <!-- Aura esmeralda sutil de mesa nocturna -->
+      <div
+        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[640px] rounded-full bg-[#10B981]/[0.06] blur-3xl"
+      >
+      </div>
+
+      <!-- Flanco Izquierdo: Blueprint Ruleta y Naipe Tecnico (1px Stroke) -->
+      <svg
+        class="hidden lg:block absolute left-4 top-1/2 -translate-y-1/2 w-72 h-[560px] text-[#10B981] opacity-[0.12]"
+        viewBox="0 0 280 560"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1"
+      >
+        <circle cx="110" cy="150" r="90" />
+        <circle cx="110" cy="150" r="74" stroke-dasharray="3 3" />
+        <circle cx="110" cy="150" r="42" />
+        <circle cx="110" cy="150" r="10" />
+        <line x1="110" y1="60" x2="110" y2="240" />
+        <line x1="20" y1="150" x2="200" y2="150" />
+        <line x1="46" y1="86" x2="174" y2="214" />
+        <line x1="46" y1="214" x2="174" y2="86" />
+        <polygon points="110,52 115,66 105,66" fill="#F43F5E" stroke="none" />
+        <rect x="48" y="310" width="96" height="140" rx="8" />
+        <rect x="54" y="316" width="84" height="128" rx="5" stroke-dasharray="2 3" />
+        <path d="M96,360 L112,380 L96,400 L80,380 Z" />
+        <text x="20" y="490" font-family="Fira Code, monospace" font-size="9" fill="currentColor">
+          SPEC 05 : ROULETTE ET ALEA
+        </text>
+        <text x="20" y="506" font-family="Fira Code, monospace" font-size="8" fill="currentColor">
+          SCL EDGE : ZERO LOGIN MATRIX
+        </text>
+      </svg>
+
+      <!-- Flanco Derecho: Blueprint Dados Isometricos y Malla Vectorial (1px Stroke) -->
+      <svg
+        class="hidden lg:block absolute right-4 top-1/2 -translate-y-1/2 w-72 h-[560px] text-[#10B981] opacity-[0.12]"
+        viewBox="0 0 280 560"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1"
+      >
+        <g transform="translate(80, 70)">
+          <polygon points="50,0 100,28 50,56 0,28" />
+          <polygon points="0,28 50,56 50,112 0,84" />
+          <polygon points="50,56 100,28 100,84 50,112" />
+          <circle cx="50" cy="28" r="3" fill="currentColor" />
+          <circle cx="25" cy="68" r="3" fill="currentColor" />
+          <circle cx="75" cy="68" r="3" fill="currentColor" />
+        </g>
+        <rect x="60" y="260" width="150" height="110" rx="6" />
+        <path d="M76,340 Q115,280 145,320 T195,290" stroke-width="1.25" />
+        <circle cx="76" cy="340" r="2.5" fill="currentColor" />
+        <circle cx="195" cy="290" r="2.5" fill="#F43F5E" stroke="none" />
+        <text x="60" y="405" font-family="Fira Code, monospace" font-size="9" fill="currentColor">
+          VECTOR CANVAS : 30HZ BATCH
+        </text>
+        <text x="60" y="421" font-family="Fira Code, monospace" font-size="8" fill="currentColor">
+          WATCHDOG ALARM : 15000MS
+        </text>
+      </svg>
+    </div>
+
+    <!-- Barra Superior de Telemetria de Consola (Z-10) -->
+    <header
+      class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-8 pt-4 pb-2 flex items-center justify-between gap-4 shrink-0"
+    >
+      <div class="flex items-center gap-2.5 whitespace-nowrap flex-shrink-0">
+        <span class="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
+        <span class="font-mono text-xs uppercase tracking-wider text-[#F8FAFC] font-bold">
+          NI IDEA
+        </span>
+        <span
+          class="hidden sm:inline-flex font-mono text-xs uppercase tracking-wider text-[#94A3B8] px-2 py-0.5 rounded bg-[#061814] border border-[#064E3B]"
+        >
+          CONSOLA EN VIVO
+        </span>
+      </div>
+
+      <nav class="flex items-center gap-4 font-mono text-xs text-[#94A3B8]" aria-label="Enlaces del proyecto">
+        <span class="hidden md:inline-flex whitespace-nowrap flex-shrink-0">
+          0 CUENTAS : 0 ANUNCIOS : 100% GRATIS
+        </span>
+        <a
+          href="https://github.com/Pipin333/niideaapp"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="whitespace-nowrap flex-shrink-0 px-3 py-1.5 rounded bg-[#061814] border border-[#064E3B] text-[#F8FAFC] hover:border-[#10B981] transition-colors duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
+        >
+          GitHub
+        </a>
+      </nav>
+    </header>
+
+    <!-- Nucleo Central de Interaccion: Una sola vista sin scroll (Z-10) -->
+    <main
+      id="main-console"
+      class="relative z-10 flex-1 w-full max-w-3xl mx-auto px-4 sm:px-8 flex items-center justify-center overflow-hidden"
+    >
+      <!-- ESTADO 1: Consola de Entrada (Anfitrion / Invitado + Cajetin _ _ _ _) -->
+      <section
+        id="state-entry"
+        aria-labelledby="entry-heading"
+        class="w-full rounded-2xl bg-[#061814] border border-[#064E3B] p-6 sm:p-8 shadow-2xl animate-console-entry space-y-6"
+      >
+        <div class="text-center space-y-2">
+          <p class="font-mono text-xs uppercase tracking-widest text-[#10B981]">
+            MESA DE JUEGO MULTIJUGADOR
+          </p>
+          <h1 id="entry-heading" class="console-title font-extrabold text-[#F8FAFC]">
+            Ni Idea
+          </h1>
+          <p class="console-subtitle text-[#94A3B8] max-w-xl mx-auto font-normal">
+            Trivia rápida, dibujos dudosos y votaciones para delatar a tus amigos.
+          </p>
+        </div>
+
+        <!-- Campo de Apodo Temporal -->
+        <div class="max-w-md mx-auto space-y-2">
+          <label
+            for="input-nickname"
+            class="block font-mono text-xs uppercase tracking-wider text-[#94A3B8]"
+          >
+            Tu apodo para esta partida
+          </label>
+          <input
+            id="input-nickname"
+            type="text"
+            maxlength="18"
+            autocomplete="off"
+            placeholder="Ej: Pipe, Cami, ElProfe"
+            class="w-full px-4 py-3 rounded-lg bg-[#0B241E] border border-[#064E3B] text-[#F8FAFC] placeholder-[#94A3B8]/60 font-sans text-sm sm:text-base focus-visible:outline-none focus-visible:border-[#10B981] focus-visible:ring-2 focus-visible:ring-[#10B981] transition-all duration-140 ease-spring"
+          />
+        </div>
+
+        <!-- Elemento Caracteristico: Cajetin de 4 Ranuras Monospaciadas (_ _ _ _) -->
+        <div class="max-w-md mx-auto space-y-2">
+          <div class="flex items-center justify-between">
+            <label
+              for="pin-slot-0"
+              class="font-mono text-xs uppercase tracking-wider text-[#94A3B8]"
+            >
+              Codigo PIN de Sala (4 caracteres)
+            </label>
+            <span class="font-mono text-xs text-[#10B981]">A-Z / 0-9</span>
+          </div>
+
+          <div
+            id="pin-slot-group"
+            data-complete="false"
+            class="grid grid-cols-4 gap-3"
+            role="group"
+            aria-label="Ranuras para el codigo de cuatro caracteres de la sala"
+          >
+            <input
+              id="pin-slot-0"
+              type="text"
+              inputmode="text"
+              maxlength="1"
+              placeholder="_"
+              aria-label="Caracter 1 del codigo de sala"
+              class="pin-slot-input w-full h-16 sm:h-20 text-center rounded-xl bg-[#0B241E] border border-[#064E3B] text-[#F8FAFC] placeholder-[#94A3B8]/40 font-bold"
+            />
+            <input
+              id="pin-slot-1"
+              type="text"
+              inputmode="text"
+              maxlength="1"
+              placeholder="_"
+              aria-label="Caracter 2 del codigo de sala"
+              class="pin-slot-input w-full h-16 sm:h-20 text-center rounded-xl bg-[#0B241E] border border-[#064E3B] text-[#F8FAFC] placeholder-[#94A3B8]/40 font-bold"
+            />
+            <input
+              id="pin-slot-2"
+              type="text"
+              inputmode="text"
+              maxlength="1"
+              placeholder="_"
+              aria-label="Caracter 3 del codigo de sala"
+              class="pin-slot-input w-full h-16 sm:h-20 text-center rounded-xl bg-[#0B241E] border border-[#064E3B] text-[#F8FAFC] placeholder-[#94A3B8]/40 font-bold"
+            />
+            <input
+              id="pin-slot-3"
+              type="text"
+              inputmode="text"
+              maxlength="1"
+              placeholder="_"
+              aria-label="Caracter 4 del codigo de sala"
+              class="pin-slot-input w-full h-16 sm:h-20 text-center rounded-xl bg-[#0B241E] border border-[#064E3B] text-[#F8FAFC] placeholder-[#94A3B8]/40 font-bold"
+            />
+          </div>
+          <p
+            id="entry-inline-feedback"
+            role="alert"
+            class="hidden font-mono text-xs text-[#F43F5E] pt-1"
+          >
+          </p>
+        </div>
+
+        <!-- Selector Doble Anfitrion / Invitado -->
+        <div class="max-w-md mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <button
+            id="btn-create-room"
+            type="button"
+            class="w-full py-3.5 px-5 rounded-xl font-mono text-xs sm:text-sm font-bold text-[#022C22] bg-gradient-to-r from-[#10B981] to-[#34D399] hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-[0.98] transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F8FAFC]"
+          >
+            Crear Sala
+          </button>
+
+          <button
+            id="btn-join-room"
+            type="button"
+            class="w-full py-3.5 px-5 rounded-xl font-mono text-xs sm:text-sm font-bold text-[#F8FAFC] bg-[#061814] border border-[#064E3B] hover:border-[#10B981] hover:text-white active:scale-[0.98] transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
+          >
+            Unirse a Sala
+          </button>
+        </div>
+      </section>
+
+      <!-- ESTADO 2: Carga / Sincronizacion con el Servidor de Sala (Skeleton) -->
+      <section
+        id="state-loading"
+        aria-live="polite"
+        class="hidden w-full rounded-2xl bg-[#061814] border border-[#064E3B] p-8 text-center space-y-4"
+      >
+        <div class="w-12 h-12 mx-auto rounded-full border-2 border-[#10B981] border-t-transparent animate-spin"></div>
+        <p class="font-display text-lg font-bold text-[#F8FAFC]">
+          Sincronizando mesa de juego...
+        </p>
+        <div class="max-w-xs mx-auto space-y-2">
+          <div class="h-3 rounded bg-[#0B241E] animate-pulse"></div>
+          <div class="h-3 w-2/3 mx-auto rounded bg-[#0B241E] animate-pulse"></div>
+        </div>
+      </section>
+
+      <!-- ESTADO 4: Error Reintentable -->
+      <section
+        id="state-error"
+        role="alert"
+        class="hidden w-full rounded-2xl bg-[#061814] border border-[#F43F5E] p-8 text-center space-y-4 z-50"
+      >
+        <p class="font-mono text-xs uppercase tracking-widest text-[#F43F5E]">
+          CONEXION INTERRUMPIDA
+        </p>
+        <h2 class="font-display text-xl font-bold text-[#F8FAFC]">
+          No pudimos conectar con la sala
+        </h2>
+        <p id="error-state-message" class="text-sm text-[#94A3B8] max-w-md mx-auto">
+          Verifica el codigo de cuatro letras o tu conexion e intenta nuevamente.
+        </p>
+        <div class="pt-2">
+          <button
+            id="btn-retry-connection"
+            type="button"
+            class="px-6 py-3 rounded-xl font-mono text-xs font-bold text-white bg-[#F43F5E] hover:opacity-95 active:scale-[0.98] transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Reintentar conexion
+          </button>
+        </div>
+      </section>
+
+      <!-- ESTADO 3 & 5: Sala Activa en Vivo (Lobby, Ruleta, Modos, Revelacion y Podio) -->
+      <section
+        id="state-active-room"
+        class="hidden w-full rounded-2xl bg-[#061814] border border-[#064E3B] p-5 sm:p-7 shadow-2xl flex flex-col justify-between space-y-4 max-h-[82dvh]"
+      >
+        <!-- Barra de Estado de la Sala -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#064E3B]">
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-xs text-[#94A3B8]">SALA:</span>
+            <span
+              id="active-room-code"
+              class="font-mono text-base sm:text-lg font-bold tracking-widest text-[#10B981] bg-[#0B241E] px-2.5 py-0.5 rounded border border-[#10B981]/40"
+            >
+              K9X2
+            </span>
+            <button
+              id="btn-copy-pin"
+              type="button"
+              class="px-2.5 py-1 rounded bg-[#0B241E] border border-[#064E3B] hover:border-[#10B981] font-mono text-xs text-[#F8FAFC] transition-colors duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
+            >
+              Copiar
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span
+              id="active-round-badge"
+              class="font-mono text-xs px-2.5 py-1 rounded bg-[#0B241E] border border-[#064E3B] text-[#F8FAFC]"
+            >
+              LOBBY
+            </span>
+            <span
+              id="active-timer-badge"
+              class="font-mono text-xs font-bold px-2.5 py-1 rounded bg-[#10B981]/20 border border-[#10B981] text-[#10B981]"
+            >
+              EN VIVO
+            </span>
+            <button
+              id="btn-leave-room"
+              type="button"
+              class="px-2.5 py-1 rounded bg-[#0B241E] border border-[#064E3B] hover:border-[#F43F5E] font-mono text-xs text-[#94A3B8] hover:text-white transition-colors duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F43F5E]"
+            >
+              Salir
+            </button>
+          </div>
+        </div>
+
+        <p id="active-status-banner" class="font-mono text-xs text-[#10B981]" aria-live="polite">
+          Conectado a la sala.
+        </p>
+
+        <!-- Sub-vista A: LOBBY -->
+        <div id="subview-lobby" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-display text-lg font-bold text-[#F8FAFC]">
+              Jugadores en la mesa
+            </h2>
+            <button
+              id="btn-add-bot"
+              type="button"
+              class="px-3 py-1.5 rounded-lg bg-[#0B241E] border border-[#064E3B] hover:border-[#10B981] font-mono text-xs text-[#10B981] transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
+            >
+              + Sumar Bot de prueba
+            </button>
+          </div>
+
+          <ul
+            id="lobby-contenders-list"
+            class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1"
+          >
+          </ul>
+
+          <div class="pt-2 space-y-2">
+            <p id="lobby-host-hint" class="font-sans text-xs text-[#94A3B8]"></p>
+            <button
+              id="btn-start-match"
+              type="button"
+              class="w-full py-3.5 rounded-xl font-mono text-xs sm:text-sm font-bold text-[#022C22] bg-gradient-to-r from-[#10B981] to-[#34D399] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F8FAFC]"
+            >
+              Iniciar Partida (3 Rondas)
+            </button>
+          </div>
+        </div>
+
+        <!-- Sub-vista B: RULETA DE MODOS -->
+        <div id="subview-roulette" class="hidden text-center space-y-4 py-2">
+          <div class="relative w-32 h-32 mx-auto">
+            <svg
+              id="roulette-wheel-graphic"
+              class="w-full h-full text-[#10B981]"
+              viewBox="0 0 120 120"
+              fill="none"
+              stroke="currentColor"
+            >
+              <circle cx="60" cy="60" r="54" stroke-width="2" />
+              <circle cx="60" cy="60" r="40" stroke-width="1" stroke-dasharray="3 3" />
+              <circle cx="60" cy="60" r="14" stroke-width="2" />
+              <line x1="60" y1="6" x2="60" y2="114" stroke-width="1.5" />
+              <line x1="13" y1="33" x2="107" y2="87" stroke-width="1.5" />
+              <line x1="13" y1="87" x2="107" y2="33" stroke-width="1.5" />
+              <polygon points="60,2 65,14 55,14" fill="#F43F5E" stroke="none" />
+            </svg>
+          </div>
+
+          <div class="space-y-1">
+            <p class="font-mono text-xs uppercase text-[#94A3B8]">
+              TURNO DE GIRAR LA RULETA
+            </p>
+            <h2 id="roulette-roller-name" class="font-display text-2xl font-extrabold text-[#F8FAFC]">
+              Jugador
+            </h2>
+            <p class="text-xs text-[#94A3B8]">
+              Modos posibles: Trivia Rush, Ese Eres Tu o Pinturillo. (Auto-giro en 15s si no hay accion).
+            </p>
+          </div>
+
+          <button
+            id="btn-spin-wheel"
+            type="button"
+            class="w-full max-w-sm mx-auto py-3.5 px-6 rounded-xl font-mono text-xs sm:text-sm font-bold text-[#022C22] bg-gradient-to-r from-[#10B981] to-[#34D399] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F8FAFC]"
+          >
+            Girar Ruleta de Modos
+          </button>
+        </div>
+
+        <!-- Sub-vista C: MODO 1 TRIVIA RUSH -->
+        <div id="subview-trivia" class="hidden space-y-4">
+          <div class="space-y-1">
+            <span
+              id="trivia-category"
+              class="font-mono text-xs uppercase text-[#10B981] tracking-wider"
+            >
+              TRIVIA RUSH
+            </span>
+            <h2
+              id="trivia-question"
+              class="font-display text-lg sm:text-xl font-bold text-[#F8FAFC] leading-snug"
+            >
+            </h2>
+          </div>
+
+          <div id="trivia-options-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+
+        <!-- Sub-vista D: MODO 2 ESE ERES TU -->
+        <div id="subview-thats-you" class="hidden space-y-4">
+          <div class="space-y-1">
+            <span class="font-mono text-xs uppercase text-[#F43F5E] tracking-wider">
+              ESE ERES TU : VOTACION SECRETA
+            </span>
+            <h2
+              id="social-prompt-text"
+              class="font-display text-lg sm:text-xl font-bold text-[#F8FAFC] leading-snug"
+            >
+            </h2>
+          </div>
+
+          <div id="social-targets-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-52 overflow-y-auto">
+          </div>
+        </div>
+
+        <!-- Sub-vista E: MODO 3 PINTURILLO -->
+        <div id="subview-pinturillo" class="hidden space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span
+              id="sketch-word-banner"
+              class="font-mono text-xs sm:text-sm font-bold text-[#10B981] tracking-wider"
+            >
+              PISTA: _ _ _ _ _
+            </span>
+
+            <div id="sketch-drawer-tools" class="flex items-center gap-2">
+              <button
+                type="button"
+                data-brush-color="#10B981"
+                aria-label="Color esmeralda"
+                class="w-6 h-6 rounded-full bg-[#10B981] border border-white/40 focus-visible:ring-2 focus-visible:ring-white"
+              ></button>
+              <button
+                type="button"
+                data-brush-color="#F43F5E"
+                aria-label="Color carmesi"
+                class="w-6 h-6 rounded-full bg-[#F43F5E] border border-white/40 focus-visible:ring-2 focus-visible:ring-white"
+              ></button>
+              <button
+                type="button"
+                data-brush-color="#F8FAFC"
+                aria-label="Color marfil"
+                class="w-6 h-6 rounded-full bg-[#F8FAFC] border border-white/40 focus-visible:ring-2 focus-visible:ring-white"
+              ></button>
+              <button
+                id="btn-clear-canvas"
+                type="button"
+                class="px-2.5 py-1 rounded bg-[#0B241E] border border-[#064E3B] font-mono text-xs text-[#94A3B8] hover:text-white"
+              >
+                Borrar
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-stretch">
+            <div class="md:col-span-2 rounded-xl bg-[#030712] border border-[#064E3B] overflow-hidden">
+              <canvas
+                id="pinturillo-canvas"
+                width="600"
+                height="320"
+                class="w-full h-44 sm:h-52 touch-none cursor-crosshair block"
+              ></canvas>
+            </div>
+
+            <div class="flex flex-col justify-between rounded-xl bg-[#0B241E] border border-[#064E3B] p-3 space-y-2">
+              <ul id="sketch-feed-list" class="space-y-1 overflow-y-auto max-h-32"></ul>
+
+              <form id="sketch-guess-form" class="flex gap-1.5">
+                <div id="sketch-guesser-box" class="flex w-full gap-1.5">
+                  <label for="sketch-guess-input" class="sr-only">Escribe tu adivinanza</label>
+                  <input
+                    id="sketch-guess-input"
+                    type="text"
+                    maxlength="30"
+                    placeholder="Adivina aqui..."
+                    class="flex-1 min-w-0 px-2.5 py-1.5 rounded bg-[#061814] border border-[#064E3B] text-xs font-mono text-[#F8FAFC] placeholder-[#94A3B8]/60 focus-visible:outline-none focus-visible:border-[#10B981]"
+                  />
+                  <button
+                    type="submit"
+                    class="px-3 py-1.5 rounded bg-[#10B981] text-[#022C22] font-mono text-xs font-bold"
+                  >
+                    Enviar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-vista F: REVELACION DE RONDA Y MARCADOR PARCIAL -->
+        <div id="subview-reveal" class="hidden space-y-4">
+          <div class="p-3.5 rounded-xl bg-[#0B241E] border border-[#10B981]/50">
+            <p class="font-mono text-xs uppercase text-[#10B981]">RESULTADO DE LA RONDA</p>
+            <p id="reveal-outcome-summary" class="font-display text-base sm:text-lg font-bold text-[#F8FAFC] mt-0.5">
+            </p>
+          </div>
+
+          <ul id="reveal-scoreboard-list" class="space-y-2 max-h-44 overflow-y-auto"></ul>
+
+          <button
+            id="btn-next-round"
+            type="button"
+            class="w-full py-3.5 rounded-xl font-mono text-xs sm:text-sm font-bold text-[#022C22] bg-gradient-to-r from-[#10B981] to-[#34D399] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F8FAFC]"
+          >
+            Continuar a la siguiente ronda
+          </button>
+        </div>
+
+        <!-- Sub-vista G: PODIO FINAL Y REVANCHA INMEDIATA -->
+        <div id="subview-podium" class="hidden space-y-4">
+          <div class="text-center space-y-1">
+            <span class="font-mono text-xs uppercase tracking-widest text-[#10B981]">
+              PODIO FINAL DE SESION
+            </span>
+            <h2 class="font-display text-2xl font-extrabold text-[#F8FAFC]">
+              Tabla de Campeones
+            </h2>
+          </div>
+
+          <ul id="podium-ranking-list" class="space-y-2 max-h-48 overflow-y-auto"></ul>
+
+          <button
+            id="btn-rematch"
+            type="button"
+            class="w-full py-3.5 rounded-xl font-mono text-xs sm:text-sm font-bold text-[#022C22] bg-gradient-to-r from-[#10B981] to-[#34D399] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all duration-140 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F8FAFC]"
+          >
+            Revancha inmediata en la misma sala
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Tecnico Compacto con Contraste Garantizado (#94A3B8 sobre #030712) -->
+    <footer
+      class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-8 pb-4 pt-2 flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-[#94A3B8] shrink-0"
+    >
+      <span>NI IDEA : CONSOLA DE PARTY GAME</span>
+      <span>PARTYKIT DURABLE OBJECTS : SANTIAGO SCL</span>
+    </footer>
+
+    <script>
+      import { bootNiIdeaConsole } from '../scripts/console-client';
+      bootNiIdeaConsole();
+    </script>
+  </body>
+</html>

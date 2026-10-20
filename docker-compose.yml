@@ -1,0 +1,17 @@
+services:
+  ni-idea:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ni-idea-console
+    ports:
+      - "${PORT:-4321}:4321"
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4321/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
