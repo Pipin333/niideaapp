@@ -227,9 +227,14 @@ export function bootNiIdeaConsole(): void {
       socket = null;
     }
 
+    const isVercelHost = window.location.hostname.endsWith('.vercel.app');
     const configuredHost =
-      (document.body.dataset.partykitHost || '').trim() || window.location.host;
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      (document.body.dataset.partykitHost || '').trim() ||
+      (isVercelHost ? 'ni-idea.pipin333.workers.dev' : window.location.host);
+    const protocol =
+      configuredHost === 'ni-idea.pipin333.workers.dev' || window.location.protocol === 'https:'
+        ? 'wss'
+        : 'ws';
 
     socket = new PartySocket({
       host: configuredHost,

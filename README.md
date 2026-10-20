@@ -2,7 +2,9 @@
 
 Trivia rápida, dibujos dudosos y votaciones para delatar a tus amigos.
 
-Consola de party game multijugador en tiempo real construida con **Astro**, **TypeScript**, **Tailwind CSS** y **PartyKit (Cloudflare Durable Objects)**. Cero cuentas de usuario, cero anuncios, cero paywalls y cero descargas.
+Consola de party game multijugador en tiempo real construida con **Astro**, **TypeScript**, **Tailwind CSS** y **PartyServer (Cloudflare Durable Objects)**. Cero cuentas de usuario, cero anuncios, cero paywalls y cero descargas.
+
+- **Demo en Vivo (Cloudflare Edge)**: [https://ni-idea.pipin333.workers.dev](https://ni-idea.pipin333.workers.dev)
 
 ---
 
